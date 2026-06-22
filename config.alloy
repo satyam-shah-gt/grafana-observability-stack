@@ -1,0 +1,72 @@
+// 1. Discover all running Docker containers on the host machine
+
+discovery.docker "docker" {
+    host             = "unix:///var/run/docker.sock"
+    refresh_interval = "5s"
+}
+
+discovery.relabel "docker" {
+    targets = discovery.docker.docker.targets
+
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+        regex         = "(grafana|loki|alloy)"
+        action        = "drop"
+    }
+    
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex         = "/(.*)"
+        target_label  = "container"
+    }
+
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label  = "project"
+    }
+
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label  = "compose_service"
+    }
+}
+
+loki.source.docker "docker" {
+    host             = "unix:///var/run/docker.sock"
+    targets          = discovery.relabel.docker.output
+    forward_to       = [loki.process.docker.receiver]
+    refresh_interval = "5s"
+}
+
+loki.process "docker" {
+    stage.docker {}
+
+    stage.logfmt {
+        mapping = {
+            level = "level",
+            logger_name = "service",
+        }
+    }
+
+    stage.labels {
+        values = {
+            level = "",
+            logger_name = "",
+        }
+    }
+
+    stage.static_labels {
+        values = {
+            env = "production",
+            platform = "docker",
+        }
+    }
+
+    forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
