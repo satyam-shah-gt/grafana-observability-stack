@@ -43,45 +43,46 @@ services:
     networks:
       - monitoring
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: monitoring-prometheus
-    restart: unless-stopped
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-storage:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
-    networks:
-      - monitoring
+  # Skipped these services
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: monitoring-prometheus
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus-storage:/prometheus
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--storage.tsdb.retention.time=30d"
+  #   networks:
+  #     - monitoring
       
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: monitoring-node-exporter
-    restart: unless-stopped
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    command:
-      - "--path.rootfs=/host"
-    networks:
-      - monitoring
+  # node-exporter:
+  #   image: prom/node-exporter:latest
+  #   container_name: monitoring-node-exporter
+  #   restart: unless-stopped
+  #   pid: host
+  #   volumes:
+  #     - /:/host:ro,rslave
+  #   command:
+  #     - "--path.rootfs=/host"
+  #   networks:
+  #     - monitoring
       
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: monitoring-cadvisor
-    restart: unless-stopped
-    privileged: true
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    networks:
-      - monitoring
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:latest
+  #   container_name: monitoring-cadvisor
+  #   restart: unless-stopped
+  #   privileged: true
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #     - /dev/disk/:/dev/disk:ro
+  #   networks:
+  #     - monitoring
 
 networks:
   monitoring:
@@ -94,5 +95,5 @@ volumes:
     name: loki_persistent_data
   alloy-storage:
     name: alloy_persistent_data
-  prometheus-storage:
-    name: prometheus_persistent_data
+  # prometheus-storage:
+  #   name: prometheus_persistent_data

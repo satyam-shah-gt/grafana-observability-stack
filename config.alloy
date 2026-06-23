@@ -1,70 +1,70 @@
-// 1. Discover all running Docker containers on the host machine
-
+// Discover Docker containers
 discovery.docker "docker" {
     host             = "unix:///var/run/docker.sock"
-    refresh_interval = "5s"
+    refresh_interval = "30s"
 }
 
+// Clean and filter Docker metadata
 discovery.relabel "docker" {
     targets = discovery.docker.docker.targets
 
+    // Drop monitoring stack logs to avoid feedback loops
     rule {
         source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
         regex         = "(grafana|loki|alloy|prometheus|node-exporter|cadvisor)"
         action        = "drop"
     }
-    
+
+    // Container name without leading slash
     rule {
         source_labels = ["__meta_docker_container_name"]
         regex         = "/(.*)"
         target_label  = "container"
     }
 
+    // Docker Compose project name
     rule {
         source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
         target_label  = "project"
     }
 
+    // Docker Compose service name
     rule {
         source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
         target_label  = "compose_service"
     }
+
+    // Useful Grafana service label
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label  = "service_name"
+    }
 }
 
+// Read Docker logs and forward directly to Loki
 loki.source.docker "docker" {
     host             = "unix:///var/run/docker.sock"
     targets          = discovery.relabel.docker.output
-    forward_to       = [loki.process.docker.receiver]
-    refresh_interval = "5s"
+    forward_to       = [loki.process.safety_limit.receiver]
+    refresh_interval = "30s"
+
+    labels = {
+        env      = "production",
+        platform = "docker",
+    }
 }
 
-loki.process "docker" {
-    stage.docker {}
-
-    stage.logfmt {
-        mapping = {
-            level = "level",
-            logger_name = "service",
-        }
-    }
-
-    stage.labels {
-        values = {
-            level = "",
-            logger_name = "",
-        }
-    }
-
-    stage.static_labels {
-        values = {
-            env = "production",
-            platform = "docker",
-        }
+loki.process "safety_limit" {
+    stage.limit {
+        rate  = 100
+        burst = 200
+        drop  = true
     }
 
     forward_to = [loki.write.default.receiver]
 }
 
+// Send logs to Loki
 loki.write "default" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
