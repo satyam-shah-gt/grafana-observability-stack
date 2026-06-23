@@ -1,7 +1,7 @@
 // Discover Docker containers
 discovery.docker "docker" {
     host             = "unix:///var/run/docker.sock"
-    refresh_interval = "30s"
+    refresh_interval = "60s"
 }
 
 // Clean and filter Docker metadata
@@ -45,19 +45,32 @@ discovery.relabel "docker" {
 loki.source.docker "docker" {
     host             = "unix:///var/run/docker.sock"
     targets          = discovery.relabel.docker.output
-    forward_to       = [loki.process.safety_limit.receiver]
-    refresh_interval = "30s"
+    forward_to       = [loki.process.docker.receiver]
+    refresh_interval = "60s"
+}
 
-    labels = {
-        env      = "production",
-        platform = "docker",
+loki.process "docker" {
+    stage.docker {}
+
+    stage.drop {
+        older_than          = "168h"
+        drop_counter_reason = "too_old"
     }
+
+    stage.static_labels {
+        values = {
+            env      = "production",
+            platform = "docker",
+        }
+    }
+
+    forward_to = [loki.process.safety_limit.receiver]
 }
 
 loki.process "safety_limit" {
     stage.limit {
-        rate  = 100
-        burst = 200
+        rate  = 1000
+        burst = 2000
         drop  = true
     }
 
